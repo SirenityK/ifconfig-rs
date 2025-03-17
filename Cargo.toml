@@ -1,0 +1,13 @@
+[package]
+name = "hello"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+actix-http = "3.10.0"
+actix-web = "4.9.0"
+maud = "0.27.0"
+serde_json = "1.0.140"
+
+[build-dependencies]
+lightningcss = "1.0.0-alpha.65"
