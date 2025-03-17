@@ -17,7 +17,7 @@ curl ip.boringcalculator.com -4
 > 34.16.196.246
 
 ```bash
-curl ip.boringcalculator.com -6 # we support ipv6 too!
+curl ip.boringcalculator.com -6
 ```
 
 > 2600:1900:4180:10c::
