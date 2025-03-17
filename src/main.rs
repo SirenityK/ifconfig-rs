@@ -84,15 +84,6 @@ fn gen_headers(req: HttpRequest) -> Vec<(String, String)> {
     header_pairs
 }
 
-fn all(req: HttpRequest) -> String {
-    let response_headers = gen_headers(req);
-
-    response_headers
-        .iter()
-        .map(|(key, value)| format!("{}: {}", key, value))
-        .collect()
-}
-
 fn json(response_headers: Vec<(String, String)>) -> Value {
     let mut body = json!({});
 
@@ -126,7 +117,11 @@ async fn index(req: HttpRequest) -> HttpResponse {
 
 #[get("/all")]
 async fn index_all(req: HttpRequest) -> HttpResponse {
-    let body = all(req);
+    let response_headers = gen_headers(req);
+    let mut body = String::new();
+    response_headers.iter().for_each(|(key, value)| {
+        body.push_str(&format!("{}: {}\n", key, value));
+    });
 
     HttpResponse::Ok()
         .content_type(ContentType::plaintext())
@@ -140,7 +135,7 @@ async fn index_all_json(req: HttpRequest) -> HttpResponse {
 
     HttpResponse::Ok()
         .content_type(ContentType::json())
-        .body(body.to_string().breakline())
+        .body(body.to_string())
 }
 
 #[actix_web::main]
@@ -151,8 +146,8 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(middleware::DefaultHeaders::new().add(("Server", "boringcalculator")))
             .service(index)
-            .service(index_all_json)
             .service(index_all)
+            .service(index_all_json)
     })
     .bind((IP, PORT))?
     .bind("[::1]:8081")?
@@ -190,7 +185,7 @@ mod tests {
         let app = test::init_service(App::new().service(index)).await;
         let resp = test::call_service(&app, curl_request()).await;
 
-        assert_eq!(test::read_body(resp).await, IP.as_bytes());
+        assert_eq!(test::read_body(resp).await, format!("{}\n", IP).as_bytes());
     }
 
     #[actix_web::test]
