@@ -1,6 +1,7 @@
-use crate::{HEADER_BREAK, Headers, gen_headers, json};
+use crate::{HEADER_BREAK, Headers, Routes, gen_response, json};
 use actix_http::header::{ACCEPT_LANGUAGE, HOST};
 use actix_web::HttpRequest;
+use buildid::build_id;
 use maud::{DOCTYPE, Markup, html};
 use serde_json::to_string_pretty;
 
@@ -70,7 +71,7 @@ pub fn layout(title: &str, lang: &str, body: Markup) -> Markup {
 
 pub fn render(req: HttpRequest) -> Markup {
     let headers = req.headers();
-    let response_headers = gen_headers(req.clone());
+    let response_headers = gen_response(req.clone());
     let ip = &response_headers
         .iter()
         .find(|(key, _)| *key == Headers::IP_ADDRESS)
@@ -80,7 +81,6 @@ pub fn render(req: HttpRequest) -> Markup {
         Some(lang) => lang.to_str().unwrap().split(HEADER_BREAK).nth(1).unwrap(),
         None => "en",
     };
-
     let host = &response_headers
         .iter()
         .find(|(key, _)| *key == HOST.as_str())
@@ -91,6 +91,12 @@ pub fn render(req: HttpRequest) -> Markup {
         .iter()
         .map(|(key, value)| format!("{}: {}", key, value))
         .collect::<Vec<String>>();
+
+    let id = match build_id() {
+        Some(id) => hex::encode(id),
+        None => "unknown".to_string(),
+    };
+
     layout(
         "Your IP address",
         lang,
@@ -131,7 +137,7 @@ pub fn render(req: HttpRequest) -> Markup {
                     td { "IP and headers" }
                     td {
                         pre {
-                            code class="language-bash" { "curl " (host) "/all" }
+                            code class="language-bash" { "curl " (host) (Routes::ALL) }
                         }
                     }
                     td {
@@ -144,7 +150,7 @@ pub fn render(req: HttpRequest) -> Markup {
                     td { "IP and headers as json" }
                     td {
                         pre {
-                            code class="language-bash" { "curl " (host) "/all.json" }
+                            code class="language-bash" { "curl " (host) (Routes::ALL_JSON) }
                         }
                     }
                     td {
@@ -159,6 +165,7 @@ pub fn render(req: HttpRequest) -> Markup {
                 p { "This server is running on actix-web, a high-performance web framework for Rust. It is a simple server that returns the IP address of the client." }
                 p { "This ensures the fastest possible response time, all thanks to Rust!" }
                 p { "The source code is available on " a href="https://github.com/sirenityk/ifconfig-rs" target="_blank" rel="noopener noreferrer" { "GitHub" } "." }
+                p { "build ID: " b { (id) } "" }
             }
         },
     )

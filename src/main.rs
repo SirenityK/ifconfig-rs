@@ -1,19 +1,20 @@
 mod ssr;
 
+use actix_http::header::SERVER;
 use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer,
     dev::ConnectionInfo,
-    get,
     http::header::{
         ACCEPT, ACCEPT_CHARSET, ACCEPT_ENCODING, ACCEPT_LANGUAGE, ACCEPT_RANGES, ContentType, HOST,
         USER_AGENT,
     },
-    middleware,
+    middleware, web,
 };
 use serde_json::{Value, json};
 use ssr::{Beautifier, render};
 
 static PORT: u16 = 8080;
+static PORT6: u16 = 8081; // for IPv6, different port to avoid conflicts
 static HEADER_BREAK: &[char] = &[',', ';'];
 static IP: &str = if cfg!(debug_assertions) {
     "0.0.0.0"
@@ -33,55 +34,47 @@ impl Client for ConnectionInfo {
     }
 }
 
+struct Routes {}
+impl Routes {
+    const ROOT: &'static str = "/";
+    const ALL: &'static str = "/all";
+    const ALL_JSON: &'static str = "/all.json";
+}
+
 struct Headers {}
 impl Headers {
     const IP_ADDRESS: &'static str = "ip_address";
     const METHOD: &'static str = "method";
 }
 
-fn headers_checks(header: &str) -> bool {
-    !(header.starts_with("dnt") || header.starts_with("sec") || header.starts_with("x-"))
-}
-
-fn gen_headers(req: HttpRequest) -> Vec<(String, String)> {
-    let accepted_headers = vec![
-        ACCEPT,
-        ACCEPT_ENCODING,
-        ACCEPT_LANGUAGE,
-        USER_AGENT,
-        ACCEPT_CHARSET,
-        ACCEPT_RANGES,
-        HOST,
-    ];
-    let mut header_pairs: Vec<(String, String)> = Vec::new();
+fn gen_response(req: HttpRequest) -> Vec<(String, String)> {
     let headers = req.headers();
     let connection = req.connection_info();
     let ip = connection.ip().unwrap();
 
-    for (key, value) in headers.iter() {
-        let key_str = key.as_str();
-        if accepted_headers.contains(key) && headers_checks(key_str) && value.len() > 0 {
-            header_pairs.push((key_str.to_string(), value.to_str().unwrap().to_string()));
+    let header_list = vec![
+        ACCEPT,
+        ACCEPT_ENCODING,
+        ACCEPT_LANGUAGE,
+        ACCEPT_CHARSET,
+        ACCEPT_RANGES,
+        USER_AGENT,
+        HOST,
+        SERVER,
+    ];
+
+    let mut response_headers = vec![];
+
+    response_headers.push((Headers::IP_ADDRESS.into(), ip.into()));
+    for header in header_list {
+        if let Some(value) = headers.get(&header) {
+            response_headers.push((header.as_str().into(), value.to_str().unwrap().into()));
         }
     }
+    response_headers.push((Headers::METHOD.into(), req.method().as_str().into()));
+    response_headers.push(("version".into(), format!("{:?}", req.version())));
 
-    // sort fheaders by accepted_headers order
-    header_pairs.sort_by(|a, b| {
-        let a = accepted_headers
-            .iter()
-            .position(|x| x == a.0.as_str())
-            .unwrap();
-        let b = accepted_headers
-            .iter()
-            .position(|x| x == b.0.as_str())
-            .unwrap();
-        a.cmp(&b)
-    });
-
-    header_pairs.insert(0, (Headers::IP_ADDRESS.to_string(), ip.to_string()));
-    header_pairs.push((Headers::METHOD.to_string(), req.method().to_string()));
-
-    header_pairs
+    response_headers
 }
 
 fn json(response_headers: Vec<(String, String)>) -> Value {
@@ -94,7 +87,6 @@ fn json(response_headers: Vec<(String, String)>) -> Value {
     body
 }
 
-#[get("/")]
 async fn index(req: HttpRequest) -> HttpResponse {
     let headers = req.headers();
     let user_agent = headers.get(USER_AGENT).unwrap().to_str().unwrap();
@@ -110,14 +102,13 @@ async fn index(req: HttpRequest) -> HttpResponse {
         resp.breakline();
         resp
     } else {
-        render(req).into_string()
+        render(req).into()
     };
     HttpResponse::Ok().content_type(content_type).body(body)
 }
 
-#[get("/all")]
 async fn index_all(req: HttpRequest) -> HttpResponse {
-    let response_headers = gen_headers(req);
+    let response_headers = gen_response(req);
     let mut body = String::new();
     response_headers.iter().for_each(|(key, value)| {
         body.push_str(&format!("{}: {}\n", key, value));
@@ -128,9 +119,8 @@ async fn index_all(req: HttpRequest) -> HttpResponse {
         .body(body)
 }
 
-#[get("/all.json")]
 async fn index_all_json(req: HttpRequest) -> HttpResponse {
-    let response_headers = gen_headers(req);
+    let response_headers = gen_response(req);
     let body = json(response_headers);
 
     HttpResponse::Ok()
@@ -140,17 +130,17 @@ async fn index_all_json(req: HttpRequest) -> HttpResponse {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    println!("Server running at http://{}:{}", IP, PORT);
-    println!("Server running at http://[::1]:{}", PORT);
+    println!("Server running at http://{IP}:{PORT}");
+    println!("Server running at http://[::1]:{PORT6}");
     HttpServer::new(|| {
         App::new()
             .wrap(middleware::DefaultHeaders::new().add(("Server", "boringcalculator")))
-            .service(index)
-            .service(index_all)
-            .service(index_all_json)
+            .route(Routes::ROOT, web::get().to(index))
+            .route(Routes::ALL, web::get().to(index_all))
+            .route(Routes::ALL_JSON, web::get().to(index_all_json))
     })
     .bind((IP, PORT))?
-    .bind("[::1]:8081")?
+    .bind(format!("[::1]:{PORT6}"))?
     .run()
     .await
 }
@@ -182,7 +172,7 @@ mod tests {
 
     #[actix_web::test]
     async fn curl_ip() {
-        let app = test::init_service(App::new().service(index)).await;
+        let app = test::init_service(App::new().route(Routes::ROOT, web::get().to(index))).await;
         let resp = test::call_service(&app, curl_request()).await;
 
         assert_eq!(test::read_body(resp).await, format!("{}\n", IP).as_bytes());
@@ -190,7 +180,7 @@ mod tests {
 
     #[actix_web::test]
     async fn html() {
-        let app = test::init_service(App::new().service(index)).await;
+        let app = test::init_service(App::new().route(Routes::ROOT, web::get().to(index))).await;
         let resp = test::call_service(&app, browser_request()).await;
 
         assert!(test::read_body(resp).await.len() > 0);
