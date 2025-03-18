@@ -1,4 +1,4 @@
-use crate::{HEADER_BREAK, Headers, Routes, gen_response, json};
+use crate::{Headers, Routes, gen_response, json};
 use actix_http::header::{ACCEPT_LANGUAGE, HOST};
 use actix_web::HttpRequest;
 use buildid::build_id;
@@ -6,6 +6,7 @@ use maud::{DOCTYPE, Markup, html};
 use serde_json::to_string_pretty;
 
 static CSS: &str = include_str!("styles.min.css");
+static HEADER_BREAK: &[char] = &[',', ';'];
 
 pub trait Beautifier {
     fn breakline(&mut self);

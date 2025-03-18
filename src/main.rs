@@ -15,7 +15,6 @@ use ssr::{Beautifier, render};
 
 static PORT: u16 = 8080;
 static PORT6: u16 = 8081; // for IPv6, different port to avoid conflicts
-static HEADER_BREAK: &[char] = &[',', ';'];
 static IP: &str = if cfg!(debug_assertions) {
     "0.0.0.0"
 } else {
