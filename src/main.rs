@@ -1,5 +1,7 @@
 mod ssr;
 
+use std::env;
+
 use actix_http::header::SERVER;
 use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer,
@@ -28,6 +30,7 @@ impl Client for ConnectionInfo {
     fn ip(&self) -> Option<&str> {
         match self.realip_remote_addr() {
             Some(ip) => Some(ip),
+            // only matches in tests
             None => Some(IP),
         }
     }
@@ -129,8 +132,21 @@ async fn index_all_json(req: HttpRequest) -> HttpResponse {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    println!("Server running at http://{IP}:{PORT}");
-    println!("Server running at http://[::1]:{PORT6}");
+    let mut host = false;
+    for arg in env::args() {
+        if arg == "--host" {
+            host = true;
+        }
+    }
+
+    let (bind_ip, bind_ip6) = if host {
+        ("0.0.0.0", "[::]")
+    } else {
+        (IP, "[::1]")
+    };
+
+    println!("Server running at http://{bind_ip}:{PORT}");
+    println!("Server running at http://{bind_ip6}:{PORT6}");
     HttpServer::new(|| {
         App::new()
             .wrap(middleware::DefaultHeaders::new().add(("Server", "boringcalculator")))
@@ -138,8 +154,8 @@ async fn main() -> std::io::Result<()> {
             .route(Routes::ALL, web::get().to(index_all))
             .route(Routes::ALL_JSON, web::get().to(index_all_json))
     })
-    .bind((IP, PORT))?
-    .bind(format!("[::1]:{PORT6}"))?
+    .bind((bind_ip, PORT))?
+    .bind(format!("{bind_ip6}:{PORT6}"))?
     .run()
     .await
 }
