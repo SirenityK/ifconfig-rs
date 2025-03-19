@@ -50,8 +50,7 @@ curl ip.boringcalculator.com/all.json
 
 # Improvements to do
 
-- Build a better UI for mobile devices. The UI right know on mobile devices is as useless as ifconfig.
-  me's
+- Build a better UI for mobile devices. The UI right know on mobile devices is as useless as ifconfig.me's
 - Add more information about the user's IP address, like the country, city, and ISP.
 
 # Benchmarks
