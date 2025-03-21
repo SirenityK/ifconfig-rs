@@ -106,7 +106,7 @@ async fn main() -> Result<()> {
     });
 
     if !CONFIG.bind_ip.is_empty() {
-        app = app.bind((IP, CONFIG.port))?;
+        app = app.bind((CONFIG.bind_ip.clone(), CONFIG.port))?;
     }
     if !CONFIG.bind_ip6.is_empty() {
         app = app.bind(format!("{}:{}", CONFIG.bind_ip6, CONFIG.port6))?;
