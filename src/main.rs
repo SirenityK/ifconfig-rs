@@ -173,7 +173,7 @@ mod tests {
         test::TestRequest::default()
             .insert_header((USER_AGENT, "curl"))
             .insert_header((ACCEPT, "*/*"))
-            .insert_header((HOST, "127.0.0.1"))
+            .insert_header((HOST, IP))
             .to_request()
     }
 
@@ -181,7 +181,7 @@ mod tests {
         test::TestRequest::default()
             .insert_header((USER_AGENT, "Mozilla/5.0"))
             .insert_header((ACCEPT, "text/html"))
-            .insert_header((HOST, "127.0.0.1"))
+            .insert_header((HOST, IP))
             .to_request()
     }
 
