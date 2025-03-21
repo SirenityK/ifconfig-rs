@@ -1,0 +1,16 @@
+---
+import Layout from "../layouts/Layout.astro";
+import IP from "../components/IP.astro";
+import ConnectionInfo from "../components/ConnectionInfo.astro";
+import Footer from "../components/Footer.astro";
+---
+
+<Layout>
+  <header class="text-center">
+    <h1>Your public IP address</h1>
+    <p>Fast, simple IP address and HTTP request information</p>
+  </header>
+  <IP />
+  <ConnectionInfo />
+  <Footer />
+</Layout>

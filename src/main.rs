@@ -1,40 +1,16 @@
+mod helpers;
 mod ssr;
 
-use std::env;
-
-use actix_http::header::SERVER;
+use actix_files::NamedFile;
 use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer,
-    dev::ConnectionInfo,
-    http::header::{
-        ACCEPT, ACCEPT_CHARSET, ACCEPT_ENCODING, ACCEPT_LANGUAGE, ACCEPT_RANGES, ContentType, HOST,
-        USER_AGENT,
-    },
+    http::header::{ContentType, USER_AGENT},
     middleware, web,
 };
+use helpers::{CONFIG, gen_response};
 use serde_json::{Value, json};
 use ssr::{Beautifier, render};
-
-static PORT: u16 = 8080;
-static PORT6: u16 = 8081; // for IPv6, different port to avoid conflicts
-static IP: &str = if cfg!(debug_assertions) {
-    "0.0.0.0"
-} else {
-    "127.0.0.1" // host with a reverse proxy
-};
-
-trait Client {
-    fn ip(&self) -> Option<&str>;
-}
-impl Client for ConnectionInfo {
-    fn ip(&self) -> Option<&str> {
-        match self.realip_remote_addr() {
-            Some(ip) => Some(ip),
-            // only matches in tests
-            None => Some(IP),
-        }
-    }
-}
+use std::{io::Result, path::PathBuf};
 
 struct Routes {}
 impl Routes {
@@ -49,35 +25,11 @@ impl Headers {
     const METHOD: &'static str = "method";
 }
 
-fn gen_response(req: HttpRequest) -> Vec<(String, String)> {
-    let headers = req.headers();
-    let connection = req.connection_info();
-    let ip = connection.ip().unwrap();
-
-    let header_list = vec![
-        ACCEPT,
-        ACCEPT_ENCODING,
-        ACCEPT_LANGUAGE,
-        ACCEPT_CHARSET,
-        ACCEPT_RANGES,
-        USER_AGENT,
-        HOST,
-        SERVER,
-    ];
-
-    let mut response_headers = vec![];
-
-    response_headers.push((Headers::IP_ADDRESS.into(), ip.into()));
-    for header in header_list {
-        if let Some(value) = headers.get(&header) {
-            response_headers.push((header.as_str().into(), value.to_str().unwrap().into()));
-        }
-    }
-    response_headers.push((Headers::METHOD.into(), req.method().as_str().into()));
-    response_headers.push(("version".into(), format!("{:?}", req.version())));
-
-    response_headers
-}
+static IP: &str = if cfg!(debug_assertions) {
+    "0.0.0.0"
+} else {
+    "127.0.0.1" // host with a reverse proxy
+};
 
 fn json(response_headers: Vec<(String, String)>) -> Value {
     let mut body = json!({});
@@ -100,7 +52,11 @@ async fn index(req: HttpRequest) -> HttpResponse {
     };
 
     let body = if is_curl {
-        let mut resp = req.connection_info().ip().unwrap().to_string();
+        let mut resp = req
+            .connection_info()
+            .realip_remote_addr()
+            .unwrap()
+            .to_string();
         resp.breakline();
         resp
     } else {
@@ -130,34 +86,33 @@ async fn index_all_json(req: HttpRequest) -> HttpResponse {
         .body(body.to_string())
 }
 
+async fn serve() -> Result<NamedFile> {
+    let mut path = PathBuf::from(CONFIG.serve_path.clone());
+    let fpath: PathBuf = CONFIG.css_file.clone().into();
+    path.push(fpath);
+
+    Ok(NamedFile::open(path)?)
+}
+
 #[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    let mut host = false;
-    for arg in env::args() {
-        if arg == "--host" {
-            host = true;
-        }
-    }
-
-    let (bind_ip, bind_ip6) = if host {
-        ("0.0.0.0", "[::]")
-    } else {
-        (IP, "[::1]")
-    };
-
-    println!("Server running at http://{bind_ip}:{PORT}");
-    println!("Server running at http://{bind_ip6}:{PORT6}");
-    HttpServer::new(|| {
+async fn main() -> Result<()> {
+    let mut app = HttpServer::new(|| {
         App::new()
             .wrap(middleware::DefaultHeaders::new().add(("Server", "actix-web")))
             .route(Routes::ROOT, web::get().to(index))
             .route(Routes::ALL, web::get().to(index_all))
             .route(Routes::ALL_JSON, web::get().to(index_all_json))
-    })
-    .bind((bind_ip, PORT))?
-    .bind(format!("{bind_ip6}:{PORT6}"))?
-    .run()
-    .await
+            .route(&format!("/{}", CONFIG.css_file), web::get().to(serve))
+    });
+
+    if !CONFIG.bind_ip.is_empty() {
+        app = app.bind((IP, CONFIG.port))?;
+    }
+    if !CONFIG.bind_ip6.is_empty() {
+        app = app.bind(format!("{}:{}", CONFIG.bind_ip6, CONFIG.port6))?;
+    }
+
+    app.run().await
 }
 
 #[cfg(test)]
@@ -173,7 +128,7 @@ mod tests {
         test::TestRequest::default()
             .insert_header((USER_AGENT, "curl"))
             .insert_header((ACCEPT, "*/*"))
-            .insert_header((HOST, IP))
+            .insert_header((HOST, CONFIG.bind_ip.clone()))
             .to_request()
     }
 
@@ -181,7 +136,7 @@ mod tests {
         test::TestRequest::default()
             .insert_header((USER_AGENT, "Mozilla/5.0"))
             .insert_header((ACCEPT, "text/html"))
-            .insert_header((HOST, IP))
+            .insert_header((HOST, CONFIG.bind_ip.clone()))
             .to_request()
     }
 
@@ -190,7 +145,10 @@ mod tests {
         let app = test::init_service(App::new().route(Routes::ROOT, web::get().to(index))).await;
         let resp = test::call_service(&app, curl_request()).await;
 
-        assert_eq!(test::read_body(resp).await, format!("{}\n", IP).as_bytes());
+        assert_eq!(
+            test::read_body(resp).await,
+            format!("{}\n", CONFIG.bind_ip).as_bytes()
+        );
     }
 
     #[actix_web::test]

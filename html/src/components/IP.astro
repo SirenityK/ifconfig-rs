@@ -1,0 +1,20 @@
+---
+import Globe from "./icons/Globe.svelte";
+import Clipboard from "./icons/Clipboard.svelte";
+import { spawn } from "child_process";
+
+const ip = spawn("curl", ["ip.boringcalculator.com"]).stdout;
+---
+
+<div class="card-ip">
+  <h3 class="inline-flex items-center gap-2">
+    <Globe />
+    Your IP address
+  </h3>
+  <p class="text-description text-sm">Your current public IP address</p>
+  <div class="flex flex-wrap items-center gap-2" role="tablist">
+    <!-- to be replaced in maud -->
+    <h4 class="my-2">{ip}</h4>
+    <Clipboard size={20} client:idle />
+  </div>
+</div>

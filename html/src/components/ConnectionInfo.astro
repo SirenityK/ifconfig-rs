@@ -1,0 +1,106 @@
+---
+import { spawn } from "child_process";
+import EachObject from "./EachObject.svelte";
+import Server from "./icons/Server.svelte";
+import Terminal from "./icons/Terminal.svelte";
+
+type Response = string | Record<string, string>;
+
+function process_response_to_string(response: Response) {
+  if (typeof response === "object") {
+    return JSON.stringify(response, null, 2);
+  }
+
+  return response;
+}
+
+const host = "ip.boringcalculator.com";
+
+const { stdout } = spawn("curl", [`${host}/all.json`]);
+let data = "";
+for await (const chunk of stdout) {
+  data += chunk;
+}
+
+const ip_info = JSON.parse(data);
+
+const full_curls = [
+  [`${host}`, "-4"],
+  [`${host}`, "-6"],
+  [`${host}/all`],
+  [`${host}/all`, "-6"],
+  [`${host}/all.json`, "-4"],
+  [`${host}/all.json`, "-6"],
+];
+
+const resps: Response[] = await Promise.all(
+  full_curls.map(async (arg) => {
+    const { stdout } = spawn("curl", arg);
+    let data = "";
+    for await (const chunk of stdout) {
+      data += chunk;
+    }
+    if (arg[0].includes("json")) {
+      return JSON.parse(data);
+    }
+    return data;
+  }),
+);
+---
+
+<div class="tabs tabs-lift">
+  <input
+    type="radio"
+    name="connection_info"
+    class="tab grow"
+    aria-label="Connection Info"
+    checked
+  />
+  <div class="tab-content bg-base-100 border-base-300">
+    <div class="m-6">
+      <h3 class="inline-flex items-center gap-2">
+        <Server />
+        Your connection
+      </h3>
+      <p class="text-description">
+        Additional details about your current HTTP request
+      </p>
+      <div class="divider m-0"></div>
+      <EachObject object={ip_info} />
+    </div>
+  </div>
+
+  <input
+    type="radio"
+    name="connection_info"
+    class="tab grow"
+    aria-label="API Usage"
+  />
+  <div class="tab-content bg-base-100 border-base-300">
+    <div class="m-6">
+      <h3 class="inline-flex items-center gap-2">
+        <Terminal />
+        Your connection
+      </h3>
+      <p class="text-description">
+        How to access your IP information programmatically
+      </p>
+      <div class="divider m-0"></div>
+      {
+        full_curls.map((curl, index) => (
+          <div class="mockup-code dark:bg-base-200 my-4">
+            <pre data-prefix="$">
+              <code>
+                <span class="text-orange-400">curl</span>
+                <span class="text-green-700"> {curl.join(" ")}</span>
+              </code>
+            </pre>
+            <pre data-prefix=">">
+              {process_response_to_string(resps[index])}
+            </pre>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</div>
