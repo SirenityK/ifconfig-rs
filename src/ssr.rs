@@ -212,7 +212,7 @@ pub fn render(req: HttpRequest) -> Markup {
                                         }
                                     }
                                     @match command {
-                                        Routes::ROOT => {
+                                        "" => {
                                             pre data-prefix=">" { (ip) }
                                         },
                                         Routes::ALL => {
