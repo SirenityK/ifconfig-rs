@@ -149,7 +149,7 @@ async fn main() -> std::io::Result<()> {
     println!("Server running at http://{bind_ip6}:{PORT6}");
     HttpServer::new(|| {
         App::new()
-            .wrap(middleware::DefaultHeaders::new().add(("Server", "boringcalculator")))
+            .wrap(middleware::DefaultHeaders::new().add(("Server", "actix-web")))
             .route(Routes::ROOT, web::get().to(index))
             .route(Routes::ALL, web::get().to(index_all))
             .route(Routes::ALL_JSON, web::get().to(index_all_json))
