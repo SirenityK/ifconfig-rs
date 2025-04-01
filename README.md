@@ -6,6 +6,19 @@ Regardless, it's already `4 times faster` than ifconfig.me! Check [benchmarks](#
 
 # Usage
 
+```
+Usage: ifconfig-rs [OPTIONS]
+Options:
+      --host                     Bind to all interfaces
+      --serve-path <SERVE_PATH>  Path to serve css file from, a web server like nginx is recommended to serve [default: /srv]
+      --css-file <CSS_FILE>      CSS file to serve [default: styles.min.css]
+  -4 <BIND_IP>                   IPv4 address range to bind to [default: 127.0.0.1]
+  -6 <BIND_IP6>                  IPv6 address range to bind to [default: [::1]]
+  -p <PORT>                      Port to bind to [default: 8080]
+      --p6 <PORT6>               IPv6 port to bind to [default: 8081]
+  -h, --help                     Print help
+```
+
 Since I don't have a specific domain for this project, I'm using the one I already have to host this service.
 
 Open [ip.boringcalculator.com](https://ip.boringcalculator.com) in your browser or use `curl` to get your IP address.
