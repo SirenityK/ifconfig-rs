@@ -56,7 +56,7 @@ async fn index(req: HttpRequest) -> HttpResponse {
             .connection_info()
             .realip_remote_addr()
             .unwrap()
-            .to_string();
+            .to_owned();
         resp.breakline();
         resp
     } else {

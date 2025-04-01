@@ -90,6 +90,19 @@ fn layout(title: &str, lang: &str, body: Markup) -> Markup {
     }
 }
 
+fn header() -> Markup {
+    html! {
+        header class="text-center" {
+            h1 {
+                "What's my IP address?"
+            }
+            p {
+                "Fast, simple IP address and HTTP request information"
+            }
+        }
+    }
+}
+
 fn footer(build_id: &str) -> Markup {
     html! {
         footer class="mx-2 space-y-4 py-4" {
@@ -119,6 +132,85 @@ fn footer(build_id: &str) -> Markup {
     }
 }
 
+fn tabs(
+    host: &str,
+    ip: &str,
+    response_headers: &Vec<(String, String)>,
+    response_list: &Vec<String>,
+) -> Markup {
+    let json_data = to_string_pretty(&json(response_headers.to_owned())).unwrap();
+    let commands = vec!["", Routes::ALL, Routes::ALL_JSON];
+
+    html! {
+        div class="tabs tabs-lift" {
+            input class="grow tab" aria-label="Connection Info" name="connection_info" type="radio" checked {}
+            div class="bg-base-100 border-base-300 tab-content" {
+                div class="m-6" {
+                    h3 class="gap-2 inline-flex items-center" {
+                        (icon(Icon::Server).unwrap())
+                        "Your connection"
+                    }
+                    p class="text-description" {
+                        "Additional details about your current HTTP request"
+                    }
+                    div class="divider m-0" {
+                    }
+                    @for header in response_headers {
+                        div class="flex *:whitespace-nowrap *:p-2 max-md:flex-col" {
+                            p class="text-description grow" {
+                                (header.0.as_pretty())
+                            }
+                            p class="overflow-x-auto" { (header.1) }
+                        }
+                    }
+                }
+            }
+            input class="grow tab" aria-label="API Usage" name="connection_info" type="radio";
+            div class="bg-base-100 border-base-300 tab-content" {
+                div class="m-6" {
+                    h3 class="gap-2 inline-flex items-center" {
+                        (icon(Icon::Terminal).unwrap())
+                        "Your connection"
+                    }
+                    p class="text-description" {
+                        "How to access your IP information programmatically"
+                    }
+                    div class="divider m-0" {
+                    }
+                    @for command in commands {
+                        div class="dark:bg-base-200 mockup-code my-4" {
+                            pre data-prefix="$" {
+                                code {
+                                    span class="text-orange-400" {
+                                        "curl "
+                                    }
+                                    span class="text-green-700" {
+                                        (host) (command)
+                                    }
+                                }
+                            }
+                            @match command {
+                                "" => {
+                                    pre data-prefix=">" { (ip) }
+                                },
+                                Routes::ALL => {
+                                    @for response in response_list {
+                                        pre data-prefix=">" { (response) }
+                                    }
+                                },
+                                Routes::ALL_JSON => {
+                                    pre data-prefix=">" { (json_data) }
+                                },
+                                _ => { "Unknown command" }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 pub fn render(req: HttpRequest) -> Markup {
     let headers = req.headers();
     let response_headers = gen_response(req.to_owned());
@@ -131,107 +223,34 @@ pub fn render(req: HttpRequest) -> Markup {
         Some(lang) => lang.to_str().unwrap().split(HEADER_BREAK).nth(1).unwrap(),
         None => "en",
     };
+
     let host = &response_headers
         .iter()
         .find(|(key, _)| *key == HOST.as_str())
         .unwrap()
         .1;
-    let rh = response_headers.to_owned();
-    let response_list = response_headers
+    let response_list = &response_headers
         .iter()
         .map(|(key, value)| format!("{}: {}", key, value))
         .collect::<Vec<String>>();
 
     let id = match build_id() {
         Some(id) => hex::encode(id),
-        None => "unknown".to_string(),
+        None => "unknown".to_owned(),
     };
+
     layout(
         "Your IP address",
         lang,
         html! {
             main class="mx-auto max-w-4xl space-y-4" {
-                header class="text-center" {
-                    h1 {
-                        "What's my IP address?"
-                    }
-                    p {
-                        "Fast, simple IP address and HTTP request information"
-                    }
-                }
+                (header())
                 div class="card-ip" {
                     h3 class="inline-flex items-center gap-2" { "Your IP address" }
                     p class="text-description text-sm" { "Your current public IP address" }
                     h4 class="my-2" { (ip) }
                 }
-                div class="tabs tabs-lift" {
-                    input class="grow tab" aria-label="Connection Info" name="connection_info" type="radio" checked {}
-                    div class="bg-base-100 border-base-300 tab-content" {
-                        div class="m-6" {
-                            h3 class="gap-2 inline-flex items-center" {
-                                (icon(Icon::Server).unwrap())
-                                "Your connection"
-                            }
-                            p class="text-description" {
-                                "Additional details about your current HTTP request"
-                            }
-                            div class="divider m-0" {
-                            }
-                            @for header in &response_headers {
-                                div class="flex *:whitespace-nowrap *:p-2 max-md:flex-col" {
-                                    p class="text-description grow" {
-                                        (header.0.to_string().as_pretty())
-                                    }
-                                    p class="overflow-x-auto" { (header.1) }
-                                }
-                            }
-                        }
-                    }
-                    input class="grow tab" aria-label="API Usage" name="connection_info" type="radio";
-                    div class="bg-base-100 border-base-300 tab-content" {
-                        div class="m-6" {
-                            h3 class="gap-2 inline-flex items-center" {
-                                (icon(Icon::Terminal).unwrap())
-                                "Your connection"
-                            }
-                            p class="text-description" {
-                                "How to access your IP information programmatically"
-                            }
-                            div class="divider m-0" {
-                            }
-                            @for command in vec!["",Routes::ALL,Routes::ALL_JSON] {
-                                div class="dark:bg-base-200 mockup-code my-4" {
-                                    pre data-prefix="$" {
-                                        code {
-                                            span class="text-orange-400" {
-                                                "curl "
-                                            }
-                                            span class="text-green-700" {
-                                                (host) (command)
-                                            }
-                                        }
-                                    }
-                                    @match command {
-                                        "" => {
-                                            pre data-prefix=">" { (ip) }
-                                        },
-                                        Routes::ALL => {
-                                            @for response in &response_list {
-                                                pre data-prefix=">" { (response) }
-                                            }
-                                        },
-                                        Routes::ALL_JSON => {
-                                            pre data-prefix=">" {
-                                                (to_string_pretty(&json(rh.to_owned())).unwrap())
-                                            }
-                                        },
-                                        _ => { "Unknown command" }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                (tabs(host, ip, &response_headers, response_list))
                 (footer(&id))
             }
         },
