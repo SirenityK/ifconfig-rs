@@ -153,7 +153,7 @@ pub fn render(req: HttpRequest) -> Markup {
             main class="mx-auto max-w-4xl space-y-4" {
                 header class="text-center" {
                     h1 {
-                        "Your public IP address"
+                        "What's my IP address?"
                     }
                     p {
                         "Fast, simple IP address and HTTP request information"
