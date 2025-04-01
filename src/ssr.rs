@@ -121,7 +121,7 @@ fn footer(build_id: &str) -> Markup {
 
 pub fn render(req: HttpRequest) -> Markup {
     let headers = req.headers();
-    let response_headers = gen_response(req.clone());
+    let response_headers = gen_response(req.to_owned());
     let ip = &response_headers
         .iter()
         .find(|(key, _)| *key == Headers::IP_ADDRESS)
@@ -136,7 +136,7 @@ pub fn render(req: HttpRequest) -> Markup {
         .find(|(key, _)| *key == HOST.as_str())
         .unwrap()
         .1;
-    let rh = response_headers.clone();
+    let rh = response_headers.to_owned();
     let response_list = response_headers
         .iter()
         .map(|(key, value)| format!("{}: {}", key, value))
@@ -222,7 +222,7 @@ pub fn render(req: HttpRequest) -> Markup {
                                         },
                                         Routes::ALL_JSON => {
                                             pre data-prefix=">" {
-                                                (to_string_pretty(&json(rh.clone())).unwrap())
+                                                (to_string_pretty(&json(rh.to_owned())).unwrap())
                                             }
                                         },
                                         _ => { "Unknown command" }

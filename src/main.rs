@@ -87,8 +87,8 @@ async fn index_all_json(req: HttpRequest) -> HttpResponse {
 }
 
 async fn serve() -> Result<NamedFile> {
-    let mut path = PathBuf::from(CONFIG.serve_path.clone());
-    let fpath: PathBuf = CONFIG.css_file.clone().into();
+    let mut path = PathBuf::from(CONFIG.serve_path.to_owned());
+    let fpath: PathBuf = CONFIG.css_file.to_owned().into();
     path.push(fpath);
 
     Ok(NamedFile::open(path)?)
@@ -106,7 +106,7 @@ async fn main() -> Result<()> {
     });
 
     if !CONFIG.bind_ip.is_empty() {
-        app = app.bind((CONFIG.bind_ip.clone(), CONFIG.port))?;
+        app = app.bind((CONFIG.bind_ip.to_owned(), CONFIG.port))?;
     }
     if !CONFIG.bind_ip6.is_empty() {
         app = app.bind(format!("{}:{}", CONFIG.bind_ip6, CONFIG.port6))?;
@@ -128,7 +128,7 @@ mod tests {
         test::TestRequest::default()
             .insert_header((USER_AGENT, "curl"))
             .insert_header((ACCEPT, "*/*"))
-            .insert_header((HOST, CONFIG.bind_ip.clone()))
+            .insert_header((HOST, CONFIG.bind_ip.to_owned()))
             .to_request()
     }
 
@@ -136,7 +136,7 @@ mod tests {
         test::TestRequest::default()
             .insert_header((USER_AGENT, "Mozilla/5.0"))
             .insert_header((ACCEPT, "text/html"))
-            .insert_header((HOST, CONFIG.bind_ip.clone()))
+            .insert_header((HOST, CONFIG.bind_ip.to_owned()))
             .to_request()
     }
 
