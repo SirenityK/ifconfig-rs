@@ -1,7 +1,9 @@
 [package]
 name = "ifconfig-rs"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
+authors = ["SirenityK"]
+license-file = "LICENSE"
 
 [dependencies]
 actix-files = "0.6.6"

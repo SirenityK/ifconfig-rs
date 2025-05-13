@@ -11,13 +11,9 @@ use clap::Parser;
 pub static CONFIG: LazyLock<Config> = LazyLock::new(|| config());
 
 #[derive(Parser, Debug)]
-#[command(about = "An ifconfig clone, made in Rust!")]
+#[command(about = "An ifconfig clone, made in Rust!", version)]
 pub struct Config {
-    #[arg(
-        long = "host",
-        help = "Bind to all interfaces",
-        default_value_t = false
-    )]
+    #[arg(long = "host", help = "Listen on 0.0.0.0", default_value_t = false)]
     pub host: bool,
 
     #[arg(
@@ -35,24 +31,15 @@ pub struct Config {
     pub css_file: String,
 
     #[arg(
-        short = '4',
-        help = "IPv4 address range to bind to",
+        short = 'b',
+        long = "bind",
+        help = "interface to bind to",
         default_value = IP
     )]
     pub bind_ip: String,
 
-    #[arg(
-        short = '6',
-        help = "IPv6 address range to bind to",
-        default_value = "[::1]"
-    )]
-    pub bind_ip6: String,
-
     #[arg(short = 'p', help = "Port to bind to", default_value_t = 8080)]
     pub port: u16,
-
-    #[arg(long = "p6", help = "IPv6 port to bind to", default_value_t = 8081)]
-    pub port6: u16,
 }
 
 pub fn config() -> Config {
@@ -60,13 +47,9 @@ pub fn config() -> Config {
 
     if config.host {
         config.bind_ip = "0.0.0.0".to_string();
-        config.bind_ip6 = "[::]".to_string();
     }
 
-    println!(
-        "Listening on {}:{} and {}:{}",
-        config.bind_ip, config.port, config.bind_ip6, config.port6
-    );
+    println!("Listening on {}:{}", config.bind_ip, config.port);
     println!(
         "Serving {} file from {}",
         config.css_file, config.serve_path
@@ -100,7 +83,17 @@ pub fn gen_response(req: HttpRequest) -> Vec<(String, String)> {
         }
     }
     response_headers.push((Headers::METHOD.into(), req.method().as_str().into()));
-    response_headers.push(("version".into(), format!("{:?}", req.version())));
+
+    let version;
+    if let Some(value) = headers.get("version") {
+        // workaround for when using a reverse proxy, get http version with the help of a header
+        // proxy_set_header Version $server_protocol;
+        version = value.to_str().unwrap().into();
+    } else {
+        version = format!("{:?}", req.version());
+    }
+
+    response_headers.push(("version".into(), version));
 
     response_headers
 }

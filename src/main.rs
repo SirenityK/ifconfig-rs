@@ -96,23 +96,17 @@ async fn serve() -> Result<NamedFile> {
 
 #[actix_web::main]
 async fn main() -> Result<()> {
-    let mut app = HttpServer::new(|| {
+    HttpServer::new(|| {
         App::new()
             .wrap(middleware::DefaultHeaders::new().add(("Server", "actix-web")))
             .route(Routes::ROOT, web::get().to(index))
             .route(Routes::ALL, web::get().to(index_all))
             .route(Routes::ALL_JSON, web::get().to(index_all_json))
             .route(&format!("/{}", CONFIG.css_file), web::get().to(serve))
-    });
-
-    if !CONFIG.bind_ip.is_empty() {
-        app = app.bind((CONFIG.bind_ip.to_owned(), CONFIG.port))?;
-    }
-    if !CONFIG.bind_ip6.is_empty() {
-        app = app.bind(format!("{}:{}", CONFIG.bind_ip6, CONFIG.port6))?;
-    }
-
-    app.run().await
+    })
+    .bind((CONFIG.bind_ip.to_owned(), CONFIG.port))?
+    .run()
+    .await
 }
 
 #[cfg(test)]
@@ -120,7 +114,7 @@ mod tests {
     use super::*;
     use actix_http::{
         Request,
-        header::{ACCEPT, HOST, USER_AGENT},
+        header::{ACCEPT, HOST, USER_AGENT, X_FORWARDED_FOR},
     };
     use actix_web::test;
 
@@ -129,6 +123,7 @@ mod tests {
             .insert_header((USER_AGENT, "curl"))
             .insert_header((ACCEPT, "*/*"))
             .insert_header((HOST, CONFIG.bind_ip.to_owned()))
+            .insert_header((X_FORWARDED_FOR, CONFIG.bind_ip.to_owned()))
             .to_request()
     }
 
@@ -137,6 +132,7 @@ mod tests {
             .insert_header((USER_AGENT, "Mozilla/5.0"))
             .insert_header((ACCEPT, "text/html"))
             .insert_header((HOST, CONFIG.bind_ip.to_owned()))
+            .insert_header((X_FORWARDED_FOR, CONFIG.bind_ip.to_owned()))
             .to_request()
     }
 

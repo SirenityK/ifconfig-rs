@@ -8,15 +8,15 @@ Regardless, it's already `4 times faster` than ifconfig.me! Check [benchmarks](#
 
 ```
 Usage: ifconfig-rs [OPTIONS]
+
 Options:
-      --host                     Bind to all interfaces
+      --host                     Listen on 0.0.0.0
       --serve-path <SERVE_PATH>  Path to serve css file from, a web server like nginx is recommended to serve [default: /srv]
       --css-file <CSS_FILE>      CSS file to serve [default: styles.min.css]
-  -4 <BIND_IP>                   IPv4 address range to bind to [default: 127.0.0.1]
-  -6 <BIND_IP6>                  IPv6 address range to bind to [default: [::1]]
+  -b, --bind <BIND_IP>           interface to bind to [default: 127.0.0.1]
   -p <PORT>                      Port to bind to [default: 8080]
-      --p6 <PORT6>               IPv6 port to bind to [default: 8081]
   -h, --help                     Print help
+  -V, --version                  Print version
 ```
 
 Since I don't have a specific domain for this project, I'm using the one I already have to host this service.
@@ -61,9 +61,70 @@ curl ip.boringcalculator.com/all.json
 }
 ```
 
+DO NOT USE THIS PLAIN COMMAND IN PRODUCTION, USE A REVERSE PROXY LIKE NGINX!
+
+# With a reverse proxy
+
+You should be using a reverse proxy like nginx for security and to support ipv6, HTTP/2, HTTP/3 and other headers, the following config example is ideal (assuming the currently set domain):
+
+```nginx
+server {
+    server_name ip.boringcalculator.com;
+    include proxy_params;
+
+    # http3 connections do not have $http_host defined, falling back to $host
+    proxy_set_header Host $host;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        add_header Alt-Svc 'h3=":443"; ma=86400';
+    }
+
+    listen [::]:443 quic reuseport;
+    listen [::]:443 ssl; # managed by Certbot
+    listen 443 quic reuseport;
+    listen 443 ssl; # managed by Certbot
+
+    http2 on;
+
+    ssl_certificate /etc/letsencrypt/live/ip.boringcalculator.com/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/ip.boringcalculator.com/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ip.boringcalculator.com;
+
+    include proxy_params;
+
+    http2 on;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+    }
+}
+```
+
+### proxy_params
+
+```nginx
+proxy_set_header Host $http_host;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_set_header Version $server_protocol;
+proxy_pass_header Server; # actix-web instead of nginx
+```
+
+This will use as far as I've discovered the latest technologies for a quick connection, specially [HTTP/3](https://en.wikipedia.org/wiki/HTTP/3).
+
 # Improvements to do
 
-- Add more information about the user's IP address, like the country, city, and ISP.
+- Add more information about the user's IP address, like the country, city, ISP.
 
 # Benchmarks
 
