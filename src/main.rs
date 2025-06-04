@@ -43,7 +43,10 @@ fn json(response_headers: Vec<(String, String)>) -> Value {
 
 async fn index(req: HttpRequest) -> HttpResponse {
     let headers = req.headers();
-    let user_agent = headers.get(USER_AGENT).unwrap().to_str().unwrap();
+    let user_agent = match headers.get(USER_AGENT) {
+        Some(ua) => ua.to_str().unwrap().to_owned(),
+        None => "curl".to_owned(),
+    };
     let is_curl = user_agent.contains("curl");
     let content_type = if is_curl {
         ContentType::plaintext()

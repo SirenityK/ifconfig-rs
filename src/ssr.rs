@@ -224,11 +224,13 @@ pub fn render(req: HttpRequest) -> Markup {
         None => "en",
     };
 
-    let host = &response_headers
+    let host = match &response_headers
         .iter()
         .find(|(key, _)| *key == HOST.as_str())
-        .unwrap()
-        .1;
+    {
+        Some((_, value)) => value,
+        None => "unknown",
+    };
     let response_list = &response_headers
         .iter()
         .map(|(key, value)| format!("{}: {}", key, value))
