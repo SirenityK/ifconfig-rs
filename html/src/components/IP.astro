@@ -1,9 +1,8 @@
 ---
 import Globe from "./icons/Globe.svelte";
 import Clipboard from "./icons/Clipboard.svelte";
-import { spawn } from "child_process";
 
-const ip = spawn("curl", ["ip.boringcalculator.com"]).stdout;
+const ip = "127.0.0.1"
 ---
 
 <div class="card-ip">

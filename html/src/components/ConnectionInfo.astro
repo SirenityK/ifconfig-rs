@@ -1,51 +1,13 @@
 ---
-import { spawn } from "child_process";
 import EachObject from "./EachObject.svelte";
 import Server from "./icons/Server.svelte";
 import Terminal from "./icons/Terminal.svelte";
 
-type Response = string | Record<string, string>;
-
-function process_response_to_string(response: Response) {
-  if (typeof response === "object") {
-    return JSON.stringify(response, null, 2);
-  }
-
-  return response;
+const ip_info = {
+  ip: "ip.boringcalculator.com",
+  hostname: "ip.boringcalculator.com",
+  city: "Boring",
 }
-
-const host = "ip.boringcalculator.com";
-
-const { stdout } = spawn("curl", [`${host}/all.json`]);
-let data = "";
-for await (const chunk of stdout) {
-  data += chunk;
-}
-
-const ip_info = JSON.parse(data);
-
-const full_curls = [
-  [`${host}`, "-4"],
-  [`${host}`, "-6"],
-  [`${host}/all`],
-  [`${host}/all`, "-6"],
-  [`${host}/all.json`, "-4"],
-  [`${host}/all.json`, "-6"],
-];
-
-const resps: Response[] = await Promise.all(
-  full_curls.map(async (arg) => {
-    const { stdout } = spawn("curl", arg);
-    let data = "";
-    for await (const chunk of stdout) {
-      data += chunk;
-    }
-    if (arg[0].includes("json")) {
-      return JSON.parse(data);
-    }
-    return data;
-  }),
-);
 ---
 
 <div class="tabs tabs-lift">
@@ -86,7 +48,7 @@ const resps: Response[] = await Promise.all(
         How to access your IP information programmatically
       </p>
       <div class="divider m-0"></div>
-      {
+      <!-- {
         full_curls.map((curl, index) => (
           <div class="mockup-code dark:bg-base-200 my-4">
             <pre data-prefix="$">
@@ -100,7 +62,7 @@ const resps: Response[] = await Promise.all(
             </pre>
           </div>
         ))
-      }
+      } -->
     </div>
   </div>
 </div>
