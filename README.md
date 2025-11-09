@@ -21,40 +21,40 @@ Options:
 
 Since I don't have a specific domain for this project, I'm using the one I already have to host this service.
 
-Open [ip.boringcalculator.com](https://ip.boringcalculator.com) in your browser or use `curl` to get your IP address.
+Open [ip.dariel.lat](https://ip.dariel.lat) in your browser or use `curl` to get your IP address.
 
 ```bash
-curl ip.boringcalculator.com -4
+curl ip.dariel.lat -4
 ```
 
 > 34.16.196.246
 
 ```bash
-curl ip.boringcalculator.com -6
+curl ip.dariel.lat -6
 ```
 
 > 2600:1900:4180:10c::
 
 ```bash
-curl ip.boringcalculator.com/all
+curl ip.dariel.lat/all
 ```
 
 ```
 ip_address: 2600:1900:4180:10c::
 accept: */*
 user-agent: curl/7.88.1
-host: ip.boringcalculator.com
+host: ip.dariel.lat
 method: GET
 ```
 
 ```bash
-curl ip.boringcalculator.com/all.json
+curl ip.dariel.lat/all.json
 ```
 
 ```json
 {
   "accept": "*/*",
-  "host": "ip.boringcalculator.com",
+  "host": "ip.dariel.lat",
   "ip_address": "2600:1900:4180:10c::",
   "method": "GET",
   "user-agent": "curl/7.88.1"
@@ -69,7 +69,7 @@ You should be using a reverse proxy like nginx for security and to support ipv6,
 
 ```nginx
 server {
-    server_name ip.boringcalculator.com;
+    server_name ip.dariel.lat;
     include proxy_params;
 
     # http3 connections do not have $http_host defined, falling back to $host
@@ -87,8 +87,8 @@ server {
 
     http2 on;
 
-    ssl_certificate /etc/letsencrypt/live/ip.boringcalculator.com/fullchain.pem; # managed by Certbot
-    ssl_certificate_key /etc/letsencrypt/live/ip.boringcalculator.com/privkey.pem; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/ip.dariel.lat/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/ip.dariel.lat/privkey.pem; # managed by Certbot
     include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
 
@@ -97,7 +97,7 @@ server {
 server {
     listen 80;
     listen [::]:80;
-    server_name ip.boringcalculator.com;
+    server_name ip.dariel.lat;
 
     include proxy_params;
 
@@ -133,7 +133,7 @@ I am using [hey](https://github.com/rakyll/hey) to benchmark the service.
 ## ifconfig-rs
 
 ```bash
-hey -z 2s -H  "User-Agent: curl" https://ip.boringcalculator.com
+hey -z 2s -H  "User-Agent: curl" https://ip.dariel.lat
 ```
 
 ```
